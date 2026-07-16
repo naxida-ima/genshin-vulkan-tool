@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.genshinvulkan.permission.PermissionHelper
 import com.example.genshinvulkan.permission.PermissionType
 import com.example.genshinvulkan.permission.ShellResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +22,7 @@ data class AppUiState(
     // 原神信息
     val genshinInfo: GenshinInfo? = null,
     val genshinDetected: Boolean = false,
-    val detectingGenshin: Boolean = true,
+    val detectingGenshin: Boolean = false,
 
     // Vulkan 状态
     val vulkanStatus: VulkanStatus = VulkanStatus(),
@@ -45,48 +47,63 @@ class MainViewModel : ViewModel() {
         detectGenshinIfReady()
     }
 
+    /**
+     * 刷新权限状态。
+     * 整个检测（含 Runtime.exec）在 IO 线程执行，绝不阻塞主线程，
+     * 否则 isRootAvailable 的 exec+waitFor 会冻结 UI（“没反应了”）。
+     */
     fun refreshPermission() {
-        PermissionHelper.init()
-        _uiState.update {
-            it.copy(
-                permissionType = PermissionHelper.permissionType,
-                shizukuAvailable = PermissionHelper.isShizukuAvailable(),
-                rootAvailable = PermissionHelper.isRootAvailable()
-            )
+        viewModelScope.launch(Dispatchers.IO) {
+            PermissionHelper.init()
+            _uiState.update {
+                it.copy(
+                    permissionType = PermissionHelper.permissionType,
+                    shizukuAvailable = PermissionHelper.isShizukuAvailable(),
+                    rootAvailable = PermissionHelper.isRootAvailable()
+                )
+            }
         }
     }
 
     fun requestShizukuPermission(context: android.content.Context) {
         PermissionHelper.requestShizukuPermission(context)
         // 权限结果由 listener 回调后通过 refreshPermission 更新
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(500)
+        viewModelScope.launch(Dispatchers.IO) {
+            delay(800)
             refreshPermission()
             detectGenshinIfReady()
         }
     }
 
     /**
-     * 在权限就绪后检测原神并刷新状态
+     * 检测原神并刷新状态。
+     * 关键：无条件执行，不依赖权限——没权限时走普通 shell 检测，
+     * 跑完必定把 detectingGenshin 置回 false，避免 UI 永久卡在“检测中”。
      */
     fun detectGenshinIfReady() {
-        if (PermissionHelper.hasPermission) {
-            viewModelScope.launch {
-                _uiState.update { it.copy(detectingGenshin = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(detectingGenshin = true) }
 
-                val gi = ConfigManager.detectGenshin()
-                _uiState.update {
-                    it.copy(
-                        genshinInfo = gi,
-                        genshinDetected = gi != null,
-                        detectingGenshin = false,
-                        lastMessage = if (gi == null) "未检测到原神安装" else "已检测到 ${gi.label} ${gi.versionName}"
-                    )
-                }
-
-                // 检测到原神后刷新 Vulkan 状态
-                gi?.let { refreshVulkanStatus(it.dataPath) }
+            val gi = ConfigManager.detectGenshin()
+            _uiState.update {
+                it.copy(
+                    genshinInfo = gi,
+                    genshinDetected = gi != null,
+                    detectingGenshin = false,
+                    lastMessage = if (gi == null) {
+                        if (PermissionHelper.hasPermission) {
+                            "未检测到原神安装"
+                        } else {
+                            "未检测到原神 · 请先授权 Shizuku 或 Root"
+                        }
+                    } else {
+                        "已检测到 ${gi.label} ${gi.versionName}"
+                    }
+                )
             }
+
+            // 检测到原神后刷新 Vulkan 状态
+            gi?.let { refreshVulkanStatus(it.dataPath) }
         }
     }
 
@@ -97,7 +114,7 @@ class MainViewModel : ViewModel() {
         val path = genshinPath ?: _uiState.value.genshinInfo?.dataPath ?: return
         if (!PermissionHelper.hasPermission) return
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(detectingStatus = true) }
             val status = ConfigManager.detectStatus(path)
             _uiState.update { it.copy(vulkanStatus = status, detectingStatus = false) }
@@ -112,7 +129,7 @@ class MainViewModel : ViewModel() {
         val gi = state.genshinInfo ?: return
         val currentEnabled = state.vulkanStatus.enabled
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isOperating = true) }
 
             val result: ShellResult = if (currentEnabled) {
@@ -147,7 +164,7 @@ class MainViewModel : ViewModel() {
      */
     fun clearShaderCache() {
         val gi = _uiState.value.genshinInfo ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isOperating = true) }
             val result = ConfigManager.clearShaderCache(gi.dataPath)
             _uiState.update {
@@ -166,7 +183,7 @@ class MainViewModel : ViewModel() {
      */
     fun optimizeDex() {
         val gi = _uiState.value.genshinInfo ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isOperating = true) }
             val result = ConfigManager.optimizeDex(gi.packageName)
             _uiState.update {
