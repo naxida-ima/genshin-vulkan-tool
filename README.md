@@ -1,5 +1,7 @@
 # 纳西妲·原神渲染引擎切换工具 🍃
 
+[![Build APK](https://github.com/naxida-ima/genshin-vulkan-tool/actions/workflows/build.yml/badge.svg)](https://github.com/naxida-ima/genshin-vulkan-tool/actions/workflows/build.yml)
+
 一键切换原神的渲染引擎 —— 从 OpenGL 到 Vulkan，提升帧率稳定性、降低功耗。
 
 ## 功能一览
