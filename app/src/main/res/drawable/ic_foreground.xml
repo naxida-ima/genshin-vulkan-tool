@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 绿色圆形背景 -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+    <!-- Vulkan V 字母 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,38L38,70L45,70L48,50L51,70L57,70L60,50L63,70L70,70L66,38L59,38L54,58L49,38Z" />
+</vector>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">纳西妲·引擎切换</string>
+    <string name="vulkan_on">Vulkan 已开启</string>
+    <string name="vulkan_off">OpenGL 运行中</string>
+    <string name="toggle_vulkan">切换渲染引擎</string>
+    <string name="device_info">设备信息</string>
+    <string name="gpu_model">GPU 型号</string>
+    <string name="device_model">设备型号</string>
+    <string name="genshin_status">原神状态</string>
+    <string name="genshin_installed">已安装</string>
+    <string name="genshin_not_found">未安装原神</string>
+    <string name="permission_required">需要 Shizuku 或 Root 权限</string>
+    <string name="permission_grant">授权</string>
+    <string name="permission_granted">已授权 ✓</string>
+    <string name="no_permission">无权限，请安装 Shizuku 或获取 Root</string>
+    <string name="shizuku_not_available">Shizuku 未运行</string>
+    <string name="root_not_available">未检测到 Root</string>
+    <string name="current_method">配置方法</string>
+    <string name="method_legacy">旧版 (JSON)</string>
+    <string name="method_gpu_list">GPU 白名单 (5.2+)</string>
+    <string name="method_engine">引擎配置 (6.0+)</string>
+    <string name="auto_detect">自动</string>
+    <string name="apply">应用</string>
+    <string name="success">操作成功</string>
+    <string name="failed">操作失败</string>
+    <string name="clear_cache">清理着色器缓存</string>
+    <string name="optimize_dex">DEX 编译优化</string>
+</resources>
