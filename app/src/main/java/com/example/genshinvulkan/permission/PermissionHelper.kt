@@ -35,7 +35,8 @@ object PermissionHelper {
 
     private var currentType = PermissionType.NONE
     private val shizukuListener = Shizuku.OnRequestPermissionResultListener { _, grantResult ->
-        if (grantResult == Shizuku.OnRequestPermissionResultListener.REQUEST_PERMISSION_RESULT_GRANTED) {
+        // Shizuku 权限结果使用 PackageManager 的授权常量（GRANTED = 0）
+        if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             currentType = PermissionType.SHIZUKU
         }
     }
@@ -116,8 +117,32 @@ object PermissionHelper {
 
     // ─── 各通道实现 ───
 
+    /**
+     * 通过 Shizuku 执行命令。
+     * 注意：Shizuku 13.x 的 newProcess 是 private（编译期被 HiddenApiRefinePlugin 改写可见性），
+     * 第三方应用无法在编译期直接调用，这里用反射绕开访问限制。
+     * newProcess 返回 ShizukuRemoteProcess（extends Process），可当普通 Process 使用。
+     */
     private fun execViaShizuku(cmd: String): ShellResult {
-        val process = Shizuku.newProcess(arrayOf("sh", "-c", cmd), null, null)
+        return try {
+            val method = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+            method.isAccessible = true
+            val process = method.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
+            readProcess(process)
+        } catch (e: Exception) {
+            ShellResult(-1, "", e.message ?: "Shizuku exec failed")
+        }
+    }
+
+    /**
+     * 读取一个 Process 的完整输出（stdout / stderr / exitCode）
+     */
+    private fun readProcess(process: Process): ShellResult {
         val stdout = StringBuilder()
         val stderr = StringBuilder()
 
@@ -132,6 +157,7 @@ object PermissionHelper {
         val exitCode = process.waitFor()
         outThread.join(2000)
         errThread.join(2000)
+        process.destroy()
 
         return ShellResult(exitCode, stdout.toString().trim(), stderr.toString().trim())
     }
