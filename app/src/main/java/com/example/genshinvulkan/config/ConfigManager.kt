@@ -5,6 +5,17 @@ import com.example.genshinvulkan.permission.PermissionHelper
 import com.example.genshinvulkan.permission.ShellResult
 
 /**
+ * 守护结果
+ */
+sealed class GuardResult {
+    object Intact : GuardResult()       // 配置完好，无需处理
+    object Repaired : GuardResult()     // 检测到被还原，已自动重写
+    object NoPermission : GuardResult() // 无权限，无法检测/修复
+    object NotTarget : GuardResult()    // 用户意图非 Vulkan，不守护
+    data class Failed(val msg: String) : GuardResult()
+}
+
+/**
  * Vulkan 配置方法枚举
  */
 enum class ConfigMethod(val label: String) {
@@ -330,5 +341,18 @@ object ConfigManager {
     suspend fun getCacheSize(genshinPath: String): String {
         val result = PermissionHelper.exec("du -sh \"$genshinPath/$SHADER_CACHE_DIR\" 2>/dev/null | cut -f1")
         return result.stdout.ifBlank { "0" }
+    }
+
+    /**
+     * 防还原守护：若当前 Vulkan 配置被游戏还原
+     *（engine / gpuList / legacy 中已不含本机 GPU），
+     * 则用最优方法自动重新写入。仅当 hasPermission 时执行写操作。
+     */
+    suspend fun ensureVulkan(genshinPath: String): GuardResult {
+        if (!PermissionHelper.hasPermission) return GuardResult.NoPermission
+        val status = detectStatus(genshinPath)
+        if (status.enabled) return GuardResult.Intact
+        val r = enableVulkan(genshinPath, ConfigMethod.AUTO)
+        return if (r.isSuccess) GuardResult.Repaired else GuardResult.Failed(r.output)
     }
 }

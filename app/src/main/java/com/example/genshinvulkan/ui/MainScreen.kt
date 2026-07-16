@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.genshinvulkan.config.AppUiState
+import com.example.genshinvulkan.config.GuardianState
 import com.example.genshinvulkan.config.MainViewModel
 import com.example.genshinvulkan.permission.PermissionType
 import com.example.genshinvulkan.ui.theme.*
@@ -146,7 +147,10 @@ fun MainScreen(viewModel: MainViewModel) {
                         Spacer(Modifier.height(24.dp))
 
                         // ═══════ 切换按钮 ═══════
-                        ToggleSwitch(state, viewModel)
+                        ToggleSwitch(state, viewModel, context)
+
+                        // ═══════ 防还原守护 ═══════
+                        GuardianCard(state, viewModel, context)
 
                         // ═══════ 消息 ═══════
                         AnimatedVisibility(
@@ -465,7 +469,11 @@ private fun VulkanHeroIndicator(state: AppUiState) {
 // ═══════════════════════════════════════════
 
 @Composable
-private fun ToggleSwitch(state: AppUiState, viewModel: MainViewModel) {
+private fun ToggleSwitch(
+    state: AppUiState,
+    viewModel: MainViewModel,
+    context: android.content.Context
+) {
     val enabled = state.genshinDetected && state.permissionType != PermissionType.NONE
     val vulkanOn = state.vulkanStatus.enabled
 
@@ -476,7 +484,7 @@ private fun ToggleSwitch(state: AppUiState, viewModel: MainViewModel) {
     )
 
     Button(
-        onClick = { viewModel.toggleVulkan() },
+        onClick = { viewModel.toggleVulkan(context) },
         enabled = enabled && !state.isOperating,
         modifier = Modifier
             .fillMaxWidth()
@@ -768,6 +776,105 @@ private fun ToolButton(
                     alpha = if (enabled) 0.7f else 0.4f
                 )
             )
+        }
+    }
+}
+
+// ═══════════════════════════════════════════
+// 防还原守护卡片
+// ═══════════════════════════════════════════
+
+@Composable
+private fun GuardianCard(
+    state: AppUiState,
+    viewModel: MainViewModel,
+    context: android.content.Context
+) {
+    if (!state.genshinDetected) return
+
+    val containerColor = when (state.guardianState) {
+        GuardianState.Repaired -> SuccessGreen.copy(alpha = 0.1f)
+        GuardianState.Intact -> SuccessGreen.copy(alpha = 0.08f)
+        GuardianState.Failed -> DangerRed.copy(alpha = 0.1f)
+        GuardianState.NeedPermission -> WarningOrange.copy(alpha = 0.1f)
+        else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+    }
+    val accent = when (state.guardianState) {
+        GuardianState.Repaired, GuardianState.Intact -> SuccessGreen
+        GuardianState.Failed -> DangerRed
+        GuardianState.NeedPermission -> WarningOrange
+        else -> MaterialTheme.colorScheme.primary
+    }
+    val icon = when (state.guardianState) {
+        GuardianState.Failed -> Icons.Outlined.WarningAmber
+        else -> Icons.Outlined.Shield
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, null, Modifier.size(18.dp), tint = accent)
+                Spacer(Modifier.width(6.dp))
+                Text("防还原守护", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.weight(1f))
+                if (state.guardianState == GuardianState.Repaired
+                    || state.guardianState == GuardianState.Intact
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = SuccessGreen.copy(alpha = 0.18f)
+                    ) {
+                        Text(
+                            "运行中",
+                            Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SuccessGreen
+                        )
+                    }
+                }
+            }
+
+            if (state.guardianMessage.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    state.guardianMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ToolButton(
+                    icon = Icons.Outlined.Autorenew,
+                    label = "重新应用",
+                    subtitle = "强制重写配置",
+                    enabled = state.genshinDetected
+                            && state.permissionType != PermissionType.NONE
+                            && !state.isOperating,
+                    onClick = { viewModel.reapplyVulkan(context) },
+                    modifier = Modifier.weight(1f)
+                )
+                ToolButton(
+                    icon = Icons.Outlined.Refresh,
+                    label = "守护检测",
+                    subtitle = "检查是否被还原",
+                    enabled = state.genshinDetected
+                            && state.permissionType != PermissionType.NONE
+                            && !state.isOperating,
+                    onClick = { viewModel.guardVulkan(context) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }

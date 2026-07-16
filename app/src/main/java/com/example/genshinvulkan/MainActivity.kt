@@ -44,5 +44,7 @@ class MainActivity : ComponentActivity() {
         // 从后台返回时刷新权限状态
         viewModel.refreshPermission()
         viewModel.detectGenshinIfReady()
+        // 防还原守护：若用户意图为 Vulkan，自动检测配置是否被游戏还原并重写
+        viewModel.guardVulkan(this)
     }
 }
