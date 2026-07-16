@@ -82,9 +82,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
-    // Shizuku
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
+    // Shizuku（对齐用户设备版本 13.6.0）
+    implementation("dev.rikka.shizuku:api:13.6.0")
+    implementation("dev.rikka.shizuku:provider:13.6.0")
 
     // Gson
     implementation("com.google.code.gson:gson:2.10.1")
