@@ -67,6 +67,16 @@ object PermissionHelper {
         return try { Shizuku.pingBinder() } catch (_: Exception) { false }
     }
 
+    /** Shizuku 是否已授权（可安全调用，异常时视为未授权） */
+    fun isGranted(): Boolean = try {
+        Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
+    } catch (_: Exception) { false }
+
+    /** 是否应向用户解释授权理由（曾被拒绝且系统建议解释），用于避免反复弹窗 */
+    fun shouldShowRationale(): Boolean = try {
+        Shizuku.shouldShowRequestPermissionRationale()
+    } catch (_: Exception) { false }
+
     fun isRootAvailable(): Boolean {
         return try {
             val p = Runtime.getRuntime().exec(arrayOf("which", "su"))
