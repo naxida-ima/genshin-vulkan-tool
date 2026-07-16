@@ -82,9 +82,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
-    // Shizuku（对齐用户设备版本 13.6.0）
-    implementation("dev.rikka.shizuku:api:13.6.0")
-    implementation("dev.rikka.shizuku:provider:13.6.0")
+    // Shizuku：api/provider 库最新为 13.1.5（库版本 ≠ Shizuku app 版本；
+    // 13.1.5 客户端库与设备上 13.6.0 的 Shizuku app 完全兼容）
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
 
     // Gson
     implementation("com.google.code.gson:gson:2.10.1")
