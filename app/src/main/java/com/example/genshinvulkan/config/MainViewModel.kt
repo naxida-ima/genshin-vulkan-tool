@@ -43,7 +43,7 @@ data class AppUiState(
     val lastSuccess: Boolean = true,
 
     // 显示细节
-    val showDetails: Boolean = false
+    val showDetails: Boolean = false,
 
     // 防还原守护
     val guardianState: GuardianState = GuardianState.None,
