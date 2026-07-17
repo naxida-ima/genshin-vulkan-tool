@@ -47,7 +47,11 @@ data class AppUiState(
 
     // 防还原守护
     val guardianState: GuardianState = GuardianState.None,
-    val guardianMessage: String = ""
+    val guardianMessage: String = "",
+
+    // 诊断模式
+    val diagnoseState: DiagnoseManager.DiagnosePhase = DiagnoseManager.DiagnosePhase.Idle,
+    val diagnoseResult: DiagnoseManager.DiagnoseResult? = null
 )
 
 class MainViewModel : ViewModel() {
@@ -312,5 +316,48 @@ class MainViewModel : ViewModel() {
 
     fun clearMessage() {
         _uiState.update { it.copy(lastMessage = "") }
+    }
+
+    /**
+     * 诊断模式：在手机上用 Shizuku 跑配置校验（PC verify 脚本的 App 内版本）。
+     * 不需要 PC、不需要 root（Shizuku 优先通道）。
+     */
+    fun runDiagnose(context: android.content.Context) {
+        val gi = _uiState.value.genshinInfo
+        if (gi == null) {
+            _uiState.update {
+                it.copy(
+                    diagnoseState = DiagnoseManager.DiagnosePhase.Error,
+                    diagnoseResult = null,
+                    lastMessage = "未检测到原神，无法诊断"
+                )
+            }
+            return
+        }
+        if (!PermissionHelper.hasPermission) {
+            _uiState.update {
+                it.copy(
+                    diagnoseState = DiagnoseManager.DiagnosePhase.NoPermission,
+                    diagnoseResult = null,
+                    lastMessage = "请先授权 Shizuku / Root 再运行诊断"
+                )
+            }
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update {
+                it.copy(diagnoseState = DiagnoseManager.DiagnosePhase.Running, diagnoseResult = null)
+            }
+            try {
+                val result = DiagnoseManager.diagnose(gi.dataPath)
+                _uiState.update {
+                    it.copy(diagnoseState = DiagnoseManager.DiagnosePhase.Done, diagnoseResult = result)
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(diagnoseState = DiagnoseManager.DiagnosePhase.Error, diagnoseResult = null)
+                }
+            }
+        }
     }
 }

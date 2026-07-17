@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.genshinvulkan.config.AppUiState
 import com.example.genshinvulkan.config.GuardianState
 import com.example.genshinvulkan.config.MainViewModel
+import com.example.genshinvulkan.config.DiagnoseManager.DiagnosePhase
 import com.example.genshinvulkan.permission.PermissionType
 import com.example.genshinvulkan.ui.theme.*
 
@@ -151,6 +152,9 @@ fun MainScreen(viewModel: MainViewModel) {
 
                         // ═══════ 防还原守护 ═══════
                         GuardianCard(state, viewModel, context)
+
+                        // ═══════ 诊断模式 ═══════
+                        DiagnoseCard(state, viewModel, context)
 
                         // ═══════ 消息 ═══════
                         AnimatedVisibility(
@@ -874,6 +878,122 @@ private fun GuardianCard(
                     onClick = { viewModel.guardVulkan(context) },
                     modifier = Modifier.weight(1f)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiagnoseCard(
+    state: AppUiState,
+    viewModel: MainViewModel,
+    context: android.content.Context
+) {
+    if (!state.genshinDetected) return
+
+    val risk = state.diagnoseState == DiagnosePhase.Done && state.diagnoseResult?.risk == true
+    val containerColor = if (risk)
+        DangerRed.copy(alpha = 0.1f)
+    else
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+    val accent = if (risk) DangerRed else Accent
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.BugReport, null, Modifier.size(18.dp), tint = accent)
+                Spacer(Modifier.width(6.dp))
+                Text("诊断模式", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.weight(1f))
+                if (state.diagnoseState == DiagnosePhase.Done) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = (if (risk) DangerRed else SuccessGreen).copy(alpha = 0.18f)
+                    ) {
+                        Text(
+                            if (risk) "有风险" else "健康",
+                            Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (risk) DangerRed else SuccessGreen
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Button(
+                onClick = { viewModel.runDiagnose(context) },
+                enabled = state.diagnoseState != DiagnosePhase.Running
+                        && state.permissionType != PermissionType.NONE,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Accent)
+            ) {
+                if (state.diagnoseState == DiagnosePhase.Running) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
+                    Spacer(Modifier.width(8.dp))
+                    Text("诊断中…")
+                } else {
+                    Icon(Icons.Outlined.BugReport, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("运行诊断（检测配置是否被还原）")
+                }
+            }
+
+            when (state.diagnoseState) {
+                DiagnosePhase.NoPermission -> {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "请先授权 Shizuku / Root 再运行诊断。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = DangerRed
+                    )
+                }
+                DiagnosePhase.Error -> {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "诊断失败，请确认本应用已能访问原神文件目录。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = DangerRed
+                    )
+                }
+                DiagnosePhase.Done -> {
+                    state.diagnoseResult?.let { r ->
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            r.verdict,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (r.logcatHints.isNotBlank()) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                "关键日志：",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Accent
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ) {
+                                Text(
+                                    r.logcatHints,
+                                    Modifier.padding(10.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+                else -> { /* Idle: 仅显示按钮 */ }
             }
         }
     }
